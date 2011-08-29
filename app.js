@@ -4,14 +4,32 @@
 // between server-side and client-side code.
 
 var http = require('http');
+
+// Require DryNode and set the library folder
 var DryNode = require(__dirname + '/dry.js');
 var dry = new DryNode.DryNode(__dirname + '/lib/');
 
+// Testing server side sharing
+var test = dry.require('test1');
+
+// Regex's to resolve URL's to view functions
 var urls = [
-    ['^/dry_node.js$', dry.loader],
-    ['^/test.html$',   dry.test],
+    // Actual function to include for loading javascript in client apps
+    ['^/dry_node.js$', dry.client_loader],
+    
+    // Html page to test Client side JS loading
+    ['^/test.html$',   dry.test_html],
+    
+    // Html page to test server side execution of shared code
+    ['^/server-side-code/$', function(req, res) {
+        res.writeHead(200, {'Content-Type': 'text/html'});
+        res.write(test.test());
+        res.end();
+    }]
 ];
 
+
+// Resolve a URL, return a function OR undefined
 function resolve(url, urls) {
     // Match a url
     // Return a url, or undefined
@@ -28,6 +46,8 @@ function resolve(url, urls) {
     return undefined;
 }
 
+
+// Create server and serve URLs
 http.createServer(function (req, res) {
     // Match a url and call a view
     var view = resolve(req.url, urls);

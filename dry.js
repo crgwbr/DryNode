@@ -5,7 +5,7 @@
 // server-side and cliend-side applications
 
 var fs   = require("fs");
-var path = require("path")
+var path = require("path");
 var lib_path = "";
 
 function DryNode(lib) {
@@ -14,7 +14,14 @@ function DryNode(lib) {
 }
 
 DryNode.prototype = {
-    loader: function(req, res) {
+    require: function(filename) {
+        filename = filename.replace('..', '');
+        filename = filename.replace('/', '');
+        filename = filename + '.js';
+        var filepath = path.join(lib_path, filename);
+        return require(filepath);
+    },
+    client_loader: function(req, res) {
         res.writeHead(200, {'Content-Type': 'text/javascript'});
         res.write("// DryNode- Server-side / Client-side code sharing for node.js\n// Craig Weber <crgwbr@gmail.com>\n");
         if (req.url.indexOf('?') != -1) {
@@ -56,7 +63,7 @@ DryNode.prototype = {
             })();
         }
     },
-    test: function(req, res) {
+    test_html: function(req, res) {
         res.writeHead(200, {'Content-Type': 'text/html'});
         res.write('<script type="text/javascript" src="/dry_node.js?test1|jquery|test2|test3"></script>');
         res.end();
