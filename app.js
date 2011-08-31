@@ -7,7 +7,7 @@ var http = require('http');
 
 // Require DryNode and set the library folder
 var DryNode = require(__dirname + '/dry.js');
-var dry = new DryNode.DryNode(__dirname + '/lib/');
+var dry = new DryNode.DryNode(__dirname + '/lib/', '/require.js');
 
 // Testing server side sharing
 var test = dry.require('test1');
@@ -16,6 +16,9 @@ var test = dry.require('test1');
 var urls = [
     // Actual function to include for loading javascript in client apps
     ['^/dry_node.js$', dry.client_loader],
+    
+    // Function for client-side require
+    ['^/require.js$', dry.client_require],
     
     // Html page to test Client side JS loading
     ['^/test.html$',   dry.test_html],
