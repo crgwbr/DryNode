@@ -50,7 +50,7 @@ DryNode.prototype = {
                     } else { \n\
                         return false; \n\
                     } \n\
-                    //localStorage.libraries[lib_name] = serialized_lib; \n\
+                    localStorage.libraries[lib_name] = serialized_lib; \n\
                 } else { \n\
                     var serialized_lib = localStorage.libraries[lib_name]; \n\
                 } \n\
