@@ -8,6 +8,8 @@
 var fs   = require("fs");
 var path = require("path");
 
+var enable_caching = "True";
+var cache_length = "86400"  // 1 day
 var lib_path = "";
 var client_require_url = "";
 var client_code = {};
@@ -151,9 +153,12 @@ function parse_querystring(url) {
 // ============================================================================
 function generate_client_code() {
     client_code.require = "var require = function(lib_name) { \n\
-        var cache_key = 'drynode-' + lib_name; \n\
-        if (localStorage[cache_key] === undefined) { localStorage.libraries = {}; } \n\
-            if (localStorage[cache_key] === undefined) { \n\
+            var cache_key = 'drynode-' + lib_name; \n\
+            var expire_key = cache_key + '-expires'; \n\
+            var refresh_cache = True; \n\
+            if (localStorage[expire_key] != undefined) \n\
+                refresh_cache = parseInt(localStorage[expire_key]) + " + cache_length + " > (+ new Date()); \n\
+            if (" + enable_cache + " && (localStorage[cache_key] === undefined || refresh_cache)) { \n\
                 var base_url = '" + client_require_url + "'; \n\
                 var url = base_url + '?lib=' + lib_name; \n\
                 var ajax = null; \n\
@@ -169,6 +174,7 @@ function generate_client_code() {
                     return false; \n\
                 } \n\
                 localStorage[cache_key] = serialized_lib; \n\
+                localStorage[expire_key] = (+ new Date()) \n\
             } else { \n\
                 var serialized_lib = localStorage[cache_key]; \n\
             } \n\
