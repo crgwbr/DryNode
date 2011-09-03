@@ -1,11 +1,13 @@
 // Craig Weber <crgwbr@gmail.com>
+// http://crgwbr.com
 //
 // dry.js
 // A simple node.js module to allow sharing of code between
-// server-side and cliend-side applications
+// server-side and client-side applications
 
 var fs   = require("fs");
 var path = require("path");
+
 var lib_path = "";
 var client_require_url = "";
 
@@ -33,39 +35,12 @@ DryNode.prototype = {
         var data = parse_querystring(req.url);
         if (data.lib === undefined) {
             // Serve require function
-            res.write("var require = function(lib_name) { \n\
-                if (localStorage['drynode-' + lib_name] === undefined) { \n\
-                    var base_url = '" + client_require_url + "'; \n\
-                    var url = base_url + '?lib=' + lib_name; \n\
-                    var ajax = null; \n\
-                    if (window.XMLHttpRequest) \n\
-                        ajax = new XMLHttpRequest(); \n\
-                    else \n\
-                        ajax = new ActiveXObject('Microsoft.XMLHTTP'); \n\
-                    if (ajax) { \n\
-                        ajax.open('GET', url, false); \n\
-                        ajax.send(null); \n\
-                        var serialized_lib = ajax.responseText; \n\
-                    } else { \n\
-                        return false; \n\
-                    } \n\
-                    localStorage['drynode-' + lib_name] = serialized_lib; \n\
-                } else { \n\
-                    var serialized_lib = localStorage['drynode-' + lib_name]; \n\
-                } \n\
-                var lib = eval(serialized_lib); \n\
-                return lib; \n\
-            } \n\
-            String.prototype.require = function() { \n\
-                return window.require(this); \n\
-            }");
+            res.write(client_code.require);
             res.end();
             return
         } else {
             // Start function wrapper
-            res.write("(function(){ \n\
-                var exports = {}; \n\
-                // Begin function\n");
+            res.write(client_code.start_lib_wrapper);
             // Sanitize
             var filepath = build_path(data.lib);
             // Check if the file exisits
@@ -73,11 +48,11 @@ DryNode.prototype = {
                 if (exists) {
                     fs.readFile(filepath, "binary", function(err, file) {
                         res.write(file, "binary");
-                        res.write("return exports; })();");
+                        res.write(client_code.end_lib_wrapper);
                         res.end();
                     });
                 } else {
-                    res.write("return exports; })();");
+                    res.write(client_code.end_lib_wrapper);
                     res.end();
                 }
             });
@@ -124,18 +99,24 @@ DryNode.prototype = {
     },
     test_html: function(req, res) {
         res.writeHead(200, {'Content-Type': 'text/html'});
-        res.write('<script type="text/javascript" src="/dry_node.js?test2|test3"></script>');
+        // Demo Client Side Require Function
         res.write('<script type="text/javascript" src="/require.js"></script>');
         res.write('<script type="text/javascript"> \n\
             var test1 = require("test1"); \n\
             console.log(test1); \n\
             console.log(test1.test()); \n\
         </script>');
+        // Demo library concat
+        res.write('<script type="text/javascript" src="/dry_node.js?test2|test3"></script>');
         res.end();
     }
 }
 
+// ============================================================================
 // Misc functions
+// ============================================================================
+
+// Build and sanitize path to the lib folder
 function build_path(filename) {
     filename = filename.replace('..', '');
     filename = filename.replace('/', '');
@@ -143,6 +124,7 @@ function build_path(filename) {
     return path.join(lib_path, filename);
 }
 
+// Parse a url or url query string into an object of key/value pairs.
 function parse_querystring(url) {
     if (url.indexOf('?') != -1) {
         var query_string = url.split('?')[1];
@@ -159,5 +141,47 @@ function parse_querystring(url) {
         return {}
     }
 }
+
+// ============================================================================
+// Client Side Code
+// Its served to the clientwith resp.write(), thus it's in a string.
+// ============================================================================
+var client_code = {};
+
+client_code.require = \
+"var require = function(lib_name) { \n\
+    if (localStorage['drynode-' + lib_name] === undefined) { \n\
+        var base_url = '" + client_require_url + "'; \n\
+        var url = base_url + '?lib=' + lib_name; \n\
+        var ajax = null; \n\
+        if (window.XMLHttpRequest) \n\
+            ajax = new XMLHttpRequest(); \n\
+        else \n\
+            ajax = new ActiveXObject('Microsoft.XMLHTTP'); \n\
+        if (ajax) { \n\
+            ajax.open('GET', url, false); \n\
+            ajax.send(null); \n\
+            var serialized_lib = ajax.responseText; \n\
+        } else { \n\
+            return false; \n\
+        } \n\
+        localStorage['drynode-' + lib_name] = serialized_lib; \n\
+    } else { \n\
+        var serialized_lib = localStorage['drynode-' + lib_name]; \n\
+    } \n\
+    var lib = eval(serialized_lib); \n\
+    return lib; \n\
+} \n\
+String.prototype.require = function() { \n\
+    return window.require(this); \n\
+}";
+
+client_code.start_lib_wrapper = \
+"(function(){ \n\
+    var exports = {}; \n\
+    // Begin function\n";
+    
+client_code.end_lib_wrapper = "return exports; })();";
+
 
 exports.DryNode = DryNode;
