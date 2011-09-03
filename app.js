@@ -56,6 +56,7 @@ http.createServer(function (req, res) {
     var view = resolve(req.url, urls);
     if (view) {
         view(req, res);
+        console.log("Served " + req.url);
     } else {
         res.writeHead(404, {'Content-Type': 'text/plain'});
         res.end('Cannot find ' + req.url);

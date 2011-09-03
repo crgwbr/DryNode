@@ -34,8 +34,7 @@ DryNode.prototype = {
         if (data.lib === undefined) {
             // Serve require function
             res.write("var require = function(lib_name) { \n\
-                if (localStorage.libraries === undefined) { localStorage.libraries = {}; } \n\
-                if (localStorage.libraries[lib_name] === undefined) { \n\
+                if (localStorage['drynode-' + lib_name] === undefined) { \n\
                     var base_url = '" + client_require_url + "'; \n\
                     var url = base_url + '?lib=' + lib_name; \n\
                     var ajax = null; \n\
@@ -50,9 +49,9 @@ DryNode.prototype = {
                     } else { \n\
                         return false; \n\
                     } \n\
-                    //localStorage.libraries[lib_name] = serialized_lib; \n\
+                    localStorage['drynode-' + lib_name] = serialized_lib; \n\
                 } else { \n\
-                    var serialized_lib = localStorage.libraries[lib_name]; \n\
+                    var serialized_lib = localStorage['drynode-' + lib_name]; \n\
                 } \n\
                 var lib = eval(serialized_lib); \n\
                 return lib; \n\
