@@ -10,6 +10,7 @@ var path = require("path");
 
 var lib_path = "";
 var client_require_url = "";
+var client_code = {};
 
 // To simplify things, this is a singleton.
 // Given its nature, it shouldn't be a problem.
@@ -18,6 +19,8 @@ function DryNode(lib, require_url) {
     lib_path = lib;
     // Relative URL that DryNode.client_require is served at. e.g. /require/ or /require.js
     client_require_url = require_url;
+    // Bake urls into client code
+    generate_client_code()
 }
 
 DryNode.prototype = {
@@ -103,8 +106,7 @@ DryNode.prototype = {
         res.write('<script type="text/javascript" src="/require.js"></script>');
         res.write('<script type="text/javascript"> \n\
             var test1 = require("test1"); \n\
-            console.log(test1); \n\
-            console.log(test1.test()); \n\
+            test1.test(); \n\
         </script>');
         // Demo library concat
         res.write('<script type="text/javascript" src="/dry_node.js?test2|test3"></script>');
@@ -145,43 +147,48 @@ function parse_querystring(url) {
 // ============================================================================
 // Client Side Code
 // Its served to the clientwith resp.write(), thus it's in a string.
+// WRapped in a function since the base urls need baked into these strings
 // ============================================================================
-var client_code = {};
-
-client_code.require = \
-"var require = function(lib_name) { \n\
-    if (localStorage['drynode-' + lib_name] === undefined) { \n\
-        var base_url = '" + client_require_url + "'; \n\
-        var url = base_url + '?lib=' + lib_name; \n\
-        var ajax = null; \n\
-        if (window.XMLHttpRequest) \n\
-            ajax = new XMLHttpRequest(); \n\
-        else \n\
-            ajax = new ActiveXObject('Microsoft.XMLHTTP'); \n\
-        if (ajax) { \n\
-            ajax.open('GET', url, false); \n\
-            ajax.send(null); \n\
-            var serialized_lib = ajax.responseText; \n\
-        } else { \n\
-            return false; \n\
+function generate_client_code() {
+    client_code.require = "var require = function(lib_name) { \n\
+        var cache_key = 'drynode-' + lib_name; \n\
+        if (localStorage[cache_key] === undefined) { localStorage.libraries = {}; } \n\
+            if (localStorage[cache_key] === undefined) { \n\
+                var base_url = '" + client_require_url + "'; \n\
+                var url = base_url + '?lib=' + lib_name; \n\
+                var ajax = null; \n\
+                if (window.XMLHttpRequest) \n\
+                    ajax = new XMLHttpRequest(); \n\
+                else \n\
+                    ajax = new ActiveXObject('Microsoft.XMLHTTP'); \n\
+                if (ajax) { \n\
+                    ajax.open('GET', url, false); \n\
+                    ajax.send(null); \n\
+                    var serialized_lib = ajax.responseText; \n\
+                } else { \n\
+                    return false; \n\
+                } \n\
+                localStorage[cache_key] = serialized_lib; \n\
+            } else { \n\
+                var serialized_lib = localStorage[cache_key]; \n\
+            } \n\
+            try { \n\
+                var lib = eval(serialized_lib); \n\
+                return lib; \n\
+            } catch (err) { \n\
+                console.log(err); \n\
+                console.log(serialized_lib); \n\
+            } \n\
         } \n\
-        localStorage['drynode-' + lib_name] = serialized_lib; \n\
-    } else { \n\
-        var serialized_lib = localStorage['drynode-' + lib_name]; \n\
-    } \n\
-    var lib = eval(serialized_lib); \n\
-    return lib; \n\
-} \n\
-String.prototype.require = function() { \n\
-    return window.require(this); \n\
-}";
+        String.prototype.require = function() { \n\
+            return window.require(this); \n\
+        }";
 
-client_code.start_lib_wrapper = \
-"(function(){ \n\
-    var exports = {}; \n\
-    // Begin function\n";
+    client_code.start_lib_wrapper = "(function(){ \n\
+        var exports = {}; \n\
+        // Begin function\n";
     
-client_code.end_lib_wrapper = "return exports; })();";
-
+    client_code.end_lib_wrapper = "return exports; })();";
+}
 
 exports.DryNode = DryNode;
