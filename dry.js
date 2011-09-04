@@ -159,7 +159,7 @@ function generate_client_code() {
             var cache_length = " + cache_length + "; \n\
             if (localStorage[expire_key] != undefined) \n\
                 refresh_cache = parseInt(localStorage[expire_key]) + cache_length < (+ new Date()); \n\
-            if (" + enable_caching + " && (localStorage[cache_key] === undefined || refresh_cache)) { \n\
+            if (!" + enable_caching + " || (localStorage[cache_key] === undefined || refresh_cache)) { \n\
                 var base_url = '" + client_require_url + "'; \n\
                 var url = base_url + '?lib=' + lib_name; \n\
                 var ajax = null; \n\
